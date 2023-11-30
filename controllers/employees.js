@@ -25,11 +25,21 @@ const getAll = async (req, res) => {
 */
 const getEmployee = async (req, res) => {
   try {
-    // const employees = await prisma.employee.findMany();
-    // res.status(200).json(employees);
+    const { id } = req.params;
+
+    const employee = await prisma.employee.findUnique({
+      where: {
+        id,
+      },
+    });
+
+    if (!employee) {
+      return res.status(404).json({ message: "Employee wasn't found" });
+    }
+    return res.status(200).json({ employee });
   } catch (error) {
     return res
-      .status(400)
+      .status(500)
       .json({ message: 'Some problems with fetching employees' });
   }
 };
@@ -41,12 +51,32 @@ const getEmployee = async (req, res) => {
 */
 const addEmployee = async (req, res) => {
   try {
-    // const employees = await prisma.employee.findMany();
-    // res.status(200).json(employees);
+    const { firstName, lastName, age, address } = req.body;
+    const user = req.user;
+
+    if (!firstName || !lastName || !age || !address) {
+      return res.status(400).json({
+        message: 'Please, fill in all the fields',
+      });
+    }
+
+    const employee = await prisma.employee.create({
+      data: {
+        address,
+        age,
+        firstName,
+        lastName,
+        userId: user.id,
+      },
+    });
+    res.status(200).json({
+      message: 'Employee was successfuly created',
+      employee,
+    });
   } catch (error) {
     return res
-      .status(400)
-      .json({ message: 'Some problems with fetching employees' });
+      .status(500)
+      .json({ message: 'Some problems with creating new employee' });
   }
 };
 
@@ -57,11 +87,38 @@ const addEmployee = async (req, res) => {
 */
 const deleteEmployee = async (req, res) => {
   try {
-    // const employees = await prisma.employee.findMany();
-    // res.status(200).json(employees);
+    const { id } = req.params;
+    const user = req.user;
+    const employee = await prisma.employee.findUnique({
+      where: {
+        id,
+      },
+    });
+
+    if (!employee) {
+      return res.status(404).json({ message: "Employee wasn't found" });
+    }
+
+    const isOwner = employee.userId === user.id;
+
+    if (!isOwner) {
+      return res
+        .status(404)
+        .json({ message: 'Employee was created by another user' });
+    }
+
+    await prisma.employee.delete({
+      where: {
+        id,
+      },
+    });
+
+    return res.status(204).json({
+      message: `Employee ${employee.firstName} with ${employee.id} was deleted`,
+    });
   } catch (error) {
     return res
-      .status(400)
+      .status(500)
       .json({ message: 'Some problems with fetching employees' });
   }
 };
@@ -73,11 +130,41 @@ const deleteEmployee = async (req, res) => {
 */
 const updateEmployee = async (req, res) => {
   try {
-    // const employees = await prisma.employee.findMany();
-    // res.status(200).json(employees);
+    const { id } = req.params;
+    const user = req.user;
+    const employee = await prisma.employee.findUnique({
+      where: {
+        id,
+      },
+    });
+
+    if (!employee) {
+      return res.status(404).json({ message: "Employee wasn't found" });
+    }
+    const isOwner = employee.userId === user.id;
+
+    if (!isOwner) {
+      return res
+        .status(404)
+        .json({ message: 'Employee was created by another user' });
+    }
+
+    console.log(isOwner);
+    await prisma.employee.update({
+      where: {
+        id,
+      },
+      data: {
+        ...req.body,
+      },
+    });
+
+    return res.status(201).json({
+      message: `Employee ${employee.firstName} with ${employee.id} was updated`,
+    });
   } catch (error) {
     return res
-      .status(400)
+      .status(500)
       .json({ message: 'Some problems with fetching employees' });
   }
 };
